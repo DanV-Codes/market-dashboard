@@ -25,7 +25,6 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-// הגדרות בסיס למניות - הוספנו את הנכסים החדשים שלך
 const STOCKS_CONFIG = {
   "S&P 500 (SPY)": { symbol: "SPY", market: "NYSE" },
   "Synopsys": { symbol: "SNPS", market: "NASDAQ" },
@@ -42,6 +41,23 @@ const TIMEFRAME_INFO = {
   "1Y": "מציג 252 ימי מסחר אחרונים (שנתי)"
 };
 
+// פונקציה שבודקת האם שוק ההון האמריקאי פתוח כרגע
+const checkMarketStatus = () => {
+  // מבקשים מהדפדפן את השעה המדויקת בניו יורק כרגע
+  const nyTimeStr = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+  const nyTime = new Date(nyTimeStr);
+  
+  const day = nyTime.getDay(); // 0 = ראשון, 1 = שני... 6 = שבת
+  const hour = nyTime.getHours();
+  const min = nyTime.getMinutes();
+  
+  const isWeekday = day >= 1 && day <= 5; // שני עד שישי
+  const isPastOpen = hour > 9 || (hour === 9 && min >= 30); // אחרי 09:30
+  const isBeforeClose = hour < 16; // לפני 16:00
+  
+  return isWeekday && isPastOpen && isBeforeClose;
+};
+
 const App = () => {
   const [selectedStock, setSelectedStock] = useState("S&P 500 (SPY)");
   const [timeframe, setTimeframe] = useState("1M");
@@ -49,6 +65,9 @@ const App = () => {
   const [companyInfo, setCompanyInfo] = useState({ price: 0, high: 0, low: 0, marketCap: 0, sector: "", volume: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // שומרים את סטטוס השוק (פתוח/סגור)
+  const isMarketOpen = checkMarketStatus();
 
   const stockConfig = STOCKS_CONFIG[selectedStock];
 
@@ -70,13 +89,15 @@ const App = () => {
         else if (timeframe === "3M") { outputSize = 65; }
         else if (timeframe === "1Y") { outputSize = 252; }
 
-        const [tdResponse, fhResponse] = await Promise.all([
+        const [tdResponse, fhProfileResponse, fhQuoteResponse] = await Promise.all([
           fetch(`https://api.twelvedata.com/time_series?symbol=${stockConfig.symbol}&interval=${interval}&outputsize=${outputSize}&apikey=${TWELVE_DATA_KEY}`),
-          fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${stockConfig.symbol}&token=${FINNHUB_KEY}`)
+          fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${stockConfig.symbol}&token=${FINNHUB_KEY}`),
+          fetch(`https://finnhub.io/api/v1/quote?symbol=${stockConfig.symbol}&token=${FINNHUB_KEY}`)
         ]);
 
         const tdData = await tdResponse.json();
-        const fhData = await fhResponse.json();
+        const fhData = await fhProfileResponse.json();
+        const quoteData = await fhQuoteResponse.json();
 
         if (tdData.status === "error" && tdData.code === 429) {
           setError("הגעת למגבלת קצב הרענון. אנא המתן חצי דקה.");
@@ -85,12 +106,40 @@ const App = () => {
         }
 
         if (tdData.status === "ok") {
-          // 1. קודם כל נשמור את המחיר העדכני ביותר (הוא הראשון ברשימה שהגיעה מה-API)
-          const latestPrice = parseFloat(tdData.values[0].close);
+          const latestData = tdData.values[0];
+          const latestPrice = parseFloat(latestData.close);
 
-          // 2. עכשיו נהפוך את הנתונים עבור הגרף
-          const formattedChart = tdData.values.reverse().map((item) => {
-            // ... (שאר הקוד של המפה נשאר אותו דבר)
+          let displayDate = latestData.datetime;
+          if (displayDate) {
+            const parts = displayDate.split(' ');
+            const datePart = parts[0];
+            const timePart = parts[1];
+            const [year, month, day] = datePart.split('-');
+
+            if (timePart) {
+              const [hour, minute] = timePart.split(':');
+              displayDate = `${day}/${month}/${year} ${hour}:${minute} EST`;
+            } else {
+              displayDate = `${day}/${month}/${year} 16:00 EST`;
+            }
+          }
+
+          // ממירים את זמן הלייב במיוחד לשעון ניו יורק (כדי שלא יושפע מישראל)
+          let liveDateStr = displayDate; 
+          if (quoteData.t) {
+            // הופכים את זמן השרת למחרוזת של ניו יורק
+            const nyLiveDateStr = new Date(quoteData.t * 1000).toLocaleString('en-US', { timeZone: 'America/New_York', hour12: false });
+            const liveDateObj = new Date(nyLiveDateStr); // יוצרים אובייקט מהזמן של ניו יורק
+            
+            const day = String(liveDateObj.getDate()).padStart(2, '0');
+            const month = String(liveDateObj.getMonth() + 1).padStart(2, '0');
+            const year = liveDateObj.getFullYear();
+            const hour = String(liveDateObj.getHours()).padStart(2, '0');
+            const minute = String(liveDateObj.getMinutes()).padStart(2, '0');
+            liveDateStr = `${day}/${month}/${year} ${hour}:${minute} EST`;
+          }
+
+          const formattedChart = [...tdData.values].reverse().map((item) => {
             const dateObj = new Date(item.datetime);
             const label = timeframe === "1D"
               ? `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`
@@ -103,13 +152,15 @@ const App = () => {
           });
 
           setChartData(formattedChart);
+
           setCompanyInfo({
-            price: latestPrice, // <--- עכשיו זה ישתמש במחיר העדכני ששמרנו בצד!
+            price: quoteData.c || latestPrice,
             marketCap: fhData.marketCapitalization || 0,
             sector: fhData.finnhubIndustry || "תעודת סל / אחר",
-            volume: parseInt(tdData.values[0].volume) || 0,
-            high: parseFloat(tdData.values[0].high) || 0,
-            low: parseFloat(tdData.values[0].low) || 0
+            volume: parseInt(latestData.volume) || 0,
+            high: quoteData.h || parseFloat(latestData.high) || 0,
+            low: quoteData.l || parseFloat(latestData.low) || 0,
+            lastUpdated: liveDateStr
           });
         }
         else {
@@ -170,6 +221,21 @@ const App = () => {
                   </div>
                 )}
               </div>
+              
+              {/* === אזור העדכון וסטטוס השוק החדש === */}
+              {!isLoading && companyInfo.lastUpdated && (
+                <div className="flex items-center gap-3 mt-1 flex-row-reverse justify-end" dir="ltr">
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Updated: {companyInfo.lastUpdated}
+                  </p>
+                  <div className={`flex items-center gap-1 text-[10px] font-bold ${isMarketOpen ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {isMarketOpen ? <Zap size={12} /> : <Clock size={12} />}
+                    <span>{isMarketOpen ? 'Market Open' : 'Market Closed'}</span>
+                  </div>
+                </div>
+              )}
+              {/* =================================== */}
+
             </div>
 
             <div className="flex flex-col items-end gap-2">
@@ -226,12 +292,9 @@ const App = () => {
               { label: "מגזר", val: companyInfo.sector || "N/A", icon: Globe },
             ].map((item, i) => (
               <div key={i} className={`p-6 flex items-center gap-5 ${i !== 0 ? "border-r border-slate-800/50" : ""}`}>
-                {/* הגדלנו את האייקון ל-22 */}
                 <div className="text-slate-500"><item.icon size={22} /></div>
                 <div>
-                  {/* הגדלנו את הפונט מ-text-[9px] ל-text-xs (12px) */}
                   <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">{item.label}</p>
-                  {/* הגדלנו את הפונט מ-text-sm (14px) ל-text-base (16px) ושינינו לצבע לבן בוהק */}
                   <p className="text-base font-mono font-bold text-white" dir="ltr">{item.val}</p>
                 </div>
               </div>
