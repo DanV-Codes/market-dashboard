@@ -25,15 +25,12 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
-// הגדרות בסיס למניות - הוספנו את הנכסים החדשים שלך
 const STOCKS_CONFIG = {
-  "S&P 500 (SPY)": { symbol: "SPY", base: 512.40, currency: "USD", vol: "65M", market: "NYSE" },
-  "Apple": { symbol: "AAPL", base: 185.20, currency: "USD", vol: "52M", market: "NASDAQ" },
-  "Microsoft": { symbol: "MSFT", base: 415.50, currency: "USD", vol: "22M", market: "NASDAQ" },
-  "Tesla": { symbol: "TSLA", base: 175.30, currency: "USD", vol: "81M", market: "NASDAQ" },
-  "Synopsys": { symbol: "SNPS", base: 545.20, currency: "USD", vol: "1.2M", market: "NASDAQ" },
-  "Vanguard S&P 500": { symbol: "VOO", base: 470.15, currency: "USD", vol: "4.5M", market: "NYSE" },
-  "Silver Trust": { symbol: "SIVR", base: 26.45, currency: "USD", vol: "850K", market: "NYSE" }
+  "S&P 500 (SPY)": { symbol: "SPY", market: "NYSE" },
+  "Vanguard S&P 500": { symbol: "VOO", market: "NYSE" },
+  "Synopsys": { symbol: "SNPS", market: "NASDAQ" },
+  "Silver Trust": { symbol: "SIVR", market: "NYSE" },
+  "שוק ישראלי (EIS)": { symbol: "EIS", market: "NYSE" }
 };
 
 const TIMEFRAME_INFO = {
