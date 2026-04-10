@@ -25,12 +25,15 @@ const CustomTooltip = ({ active, payload }) => {
   return null;
 };
 
+// הגדרות בסיס למניות - הוספנו את הנכסים החדשים שלך
 const STOCKS_CONFIG = {
-  "S&P 500 (SPY)": { symbol: "SPY", market: "NYSE" },
-  "Vanguard S&P 500": { symbol: "VOO", market: "NYSE" },
-  "Synopsys": { symbol: "SNPS", market: "NASDAQ" },
-  "Silver Trust": { symbol: "SIVR", market: "NYSE" },
-  "שוק ישראלי (EIS)": { symbol: "EIS", market: "NYSE" }
+  "S&P 500 (SPY)": { symbol: "SPY", base: 512.40, currency: "USD", vol: "65M", market: "NYSE" },
+  "Microsoft": { symbol: "MSFT", base: 415.50, currency: "USD", vol: "22M", market: "NASDAQ" },
+  "Tesla": { symbol: "TSLA", base: 175.30, currency: "USD", vol: "81M", market: "NASDAQ" },
+  "Synopsys": { symbol: "SNPS", base: 545.20, currency: "USD", vol: "1.2M", market: "NASDAQ" },
+  "Vanguard S&P 500": { symbol: "VOO", base: 470.15, currency: "USD", vol: "4.5M", market: "NYSE" },
+  "Silver Trust": { symbol: "SIVR", base: 26.45, currency: "USD", vol: "850K", market: "NYSE" },
+  "Israel ETF (EIS)": { symbol: "EIS", base: 0, currency: "USD", vol: "0", market: "NYSE" }
 };
 
 const TIMEFRAME_INFO = {
@@ -42,7 +45,7 @@ const TIMEFRAME_INFO = {
 };
 
 const App = () => {
-  const [selectedStock, setSelectedStock] = useState("Apple");
+  const [selectedStock, setSelectedStock] = useState("S&P 500 (SPY)");
   const [timeframe, setTimeframe] = useState("1M");
   const [chartData, setChartData] = useState([]);
   const [companyInfo, setCompanyInfo] = useState({ price: 0, high: 0, low: 0, marketCap: 0, sector: "", volume: 0 });
