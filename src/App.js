@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  AreaChart, 
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
   Area
 } from 'recharts';
 import { TrendingUp, TrendingDown, Clock, Activity, BarChart3, Globe, Zap, Loader2 } from 'lucide-react';
@@ -53,7 +53,7 @@ const App = () => {
   const [error, setError] = useState(null);
 
   const stockConfig = STOCKS_CONFIG[selectedStock];
-  
+
   const TWELVE_DATA_KEY = '3c3ee35909374066b4b76cce47402888';
   const FINNHUB_KEY = 'd7am3s9r01qmvlmggir0d7am3s9r01qmvlmggirg';
 
@@ -61,7 +61,7 @@ const App = () => {
     const fetchHybridData = async () => {
       setIsLoading(true);
       setError(null);
-      
+
       try {
         let interval = "1day";
         let outputSize = 22;
@@ -87,12 +87,17 @@ const App = () => {
         }
 
         if (tdData.status === "ok") {
+          // 1. קודם כל נשמור את המחיר העדכני ביותר (הוא הראשון ברשימה שהגיעה מה-API)
+          const latestPrice = parseFloat(tdData.values[0].close);
+
+          // 2. עכשיו נהפוך את הנתונים עבור הגרף
           const formattedChart = tdData.values.reverse().map((item) => {
+            // ... (שאר הקוד של המפה נשאר אותו דבר)
             const dateObj = new Date(item.datetime);
-            const label = timeframe === "1D" 
+            const label = timeframe === "1D"
               ? `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`
               : `${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-            
+
             return {
               price: parseFloat(item.close),
               label: label
@@ -101,14 +106,15 @@ const App = () => {
 
           setChartData(formattedChart);
           setCompanyInfo({
-            price: parseFloat(tdData.values[0].close) || 0,
+            price: latestPrice, // <--- עכשיו זה ישתמש במחיר העדכני ששמרנו בצד!
             marketCap: fhData.marketCapitalization || 0,
             sector: fhData.finnhubIndustry || "תעודת סל / אחר",
             volume: parseInt(tdData.values[0].volume) || 0,
             high: parseFloat(tdData.values[0].high) || 0,
             low: parseFloat(tdData.values[0].low) || 0
           });
-        } else {
+        }
+        else {
           setError("שגיאה במשיכת נתונים.");
         }
       } catch (err) {
@@ -120,7 +126,7 @@ const App = () => {
     fetchHybridData();
   }, [selectedStock, timeframe, stockConfig.symbol]);
 
-  const changePercentage = chartData.length >= 2 
+  const changePercentage = chartData.length >= 2
     ? (((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price) * 100).toFixed(2)
     : 0;
   const isPositive = changePercentage >= 0;
@@ -137,9 +143,8 @@ const App = () => {
             <button
               key={stock}
               onClick={() => setSelectedStock(stock)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                selectedStock === stock ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
-              }`}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${selectedStock === stock ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+                }`}
             >
               {stock}
             </button>
@@ -149,7 +154,7 @@ const App = () => {
 
       <main className="max-w-6xl mx-auto">
         <div className="bg-slate-900/40 border border-slate-800 rounded-3xl overflow-hidden backdrop-blur-sm shadow-2xl text-right">
-          
+
           <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row justify-between items-end gap-4">
             <div>
               <p className="text-slate-400 text-[12px] font-black uppercase tracking-[0.2em] mb-1">
@@ -175,9 +180,8 @@ const App = () => {
                   <button
                     key={tf}
                     onClick={() => setTimeframe(tf)}
-                    className={`px-5 py-2 rounded-md text-[10px] font-black tracking-widest transition-all ${
-                      timeframe === tf ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-300"
-                    }`}
+                    className={`px-5 py-2 rounded-md text-[10px] font-black tracking-widest transition-all ${timeframe === tf ? "bg-blue-600 text-white" : "text-slate-500 hover:text-slate-300"
+                      }`}
                   >
                     {tf}
                   </button>
@@ -202,8 +206,8 @@ const App = () => {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0}/>
+                      <stop offset="5%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={isPositive ? "#10b981" : "#f43f5e"} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
