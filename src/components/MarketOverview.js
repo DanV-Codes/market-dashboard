@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
+// ייבוא רכיבי הגרף של Recharts למסך השוק
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // --- חבילות הנתונים השונות שלנו (Market Data Simulation) ---
-
 const data1D = [
   { time: '10:00', sp500: 5150, ta125: 2010 },
   { time: '11:00', sp500: 5165, ta125: 2015 },
@@ -36,14 +36,32 @@ const data1Y = [
   { time: 'היום', sp500: 5085, ta125: 2028 },
 ];
 
+// מפה של מס' ימי מסחר לכל טווח זמן
+const tradingDaysMap = {
+  '1D': 1,
+  '1W': 5,
+  '1M': 22,
+  '1Y': 252 // ממוצע ימי מסחר בשנה
+};
+
 // כרטיסיות המידע למדדים המרכזיים
 const marketIndices = [
-  { name: "S&P 500", value: "5,085.20", change: "-1.14%", isPositive: false },
-  { name: "תל אביב 125", value: "2,028.40", change: "+0.28%", isPositive: true },
-  { name: "Synopsys (SNPS)", value: "510.20", change: "-0.55%", isPositive: false }
+  { name: "S&P 500", value: 5085.20, change: "-1.14%", isPositive: false },
+  { name: "תל אביב 125", value: 2028.40, change: "+0.28%", isPositive: true },
+  { name: "Synopsys (SNPS)", value: 510.20, change: "-0.55%", isPositive: false }
 ];
 
 const MarketOverview = () => {
+  // פונקציית עזר לעיצוב מטבע - בדיוק כמו בתיק האישי (DRY!)
+  const formatCurrency = (value) => {
+    return value.toLocaleString('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
   // הזיכרון של הרכיב: איזה טווח זמן נבחר כרגע? (ברירת מחדל: 1D)
   const [timeRange, setTimeRange] = useState('1D');
 
@@ -74,7 +92,8 @@ const MarketOverview = () => {
           <div key={i} className="p-6 bg-slate-900 rounded-lg shadow-lg border border-slate-800 flex justify-between items-center">
             <div>
               <h3 className="text-slate-400 text-sm font-medium mb-1">{index.name}</h3>
-              <p className="text-2xl font-bold text-white">{index.value}</p>
+              {/* שימוש בפונקציית העזר לעיצוב המחיר עם דולר */}
+              <p className="text-2xl font-bold text-white">{formatCurrency(index.value)}</p>
             </div>
             <div className={`px-3 py-1 rounded-full text-sm font-bold ${index.isPositive ? 'bg-green-500/10 text-green-500' : 'bg-rose-500/10 text-rose-500'}`}>
               {index.change}
@@ -88,23 +107,34 @@ const MarketOverview = () => {
         
         {/* כותרת וכפתורי זמן בראש הגרף */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-          <h2 className="text-xl font-bold text-blue-400">מגמת מסחר - השוואת מדדים</h2>
+          <div>
+            <h2 className="text-xl font-bold text-blue-400">מגמת מסחר - השוואת מדדים</h2>
+            {/* סטאמפה של זמן כמו בתמונה */}
+            <p className="text-sm text-slate-500">עדכון אחרון: לפני 3 דקות</p>
+          </div>
           
-          {/* כפתורי הזמן (Toggle Buttons) */}
-          <div className="flex bg-slate-800 rounded-lg p-1">
-            {timeButtons.map((btn) => (
-              <button
-                key={btn.id}
-                onClick={() => setTimeRange(btn.id)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  timeRange === btn.id 
-                    ? 'bg-blue-600 text-white shadow-sm' // עיצוב לכפתור פעיל
-                    : 'text-slate-400 hover:text-white hover:bg-slate-700' // עיצוב לכפתור כבוי
-                }`}
-              >
-                {btn.label}
-              </button>
-            ))}
+          {/* אזור כפתורי הזמן והכיתוב שמתחת */}
+          <div className="flex flex-col items-center sm:items-end gap-1.5 w-full sm:w-auto">
+            {/* כפתורי הזמן (Toggle Buttons) */}
+            <div className="flex bg-slate-800 rounded-lg p-1 w-full sm:w-auto">
+              {timeButtons.map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setTimeRange(btn.id)}
+                  className={`flex-1 sm:flex-initial px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    timeRange === btn.id 
+                      ? 'bg-blue-600 text-white shadow-sm' // עיצוב לכפתור פעיל
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700' // עיצוב לכפתור כבוי
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+            {/* הצגת מס' ימי המסחר מתחת לרזולוציית התצוגה */}
+            <p className="text-xs text-slate-500">
+              מס׳ ימי מסחר בתצוגה: <span className="font-bold text-slate-400">{tradingDaysMap[timeRange]}</span>
+            </p>
           </div>
         </div>
 
@@ -118,10 +148,13 @@ const MarketOverview = () => {
               <Tooltip 
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#fff' }}
                 itemStyle={{ fontWeight: 'bold' }}
+                // עיצוב הדולר בתוך החלונית הצפה
+                formatter={(value) => formatCurrency(value)}
               />
               <Legend verticalAlign="top" height={36} iconType="circle" />
-              <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-              <Line type="monotone" dataKey="ta125" name="תל אביב 125" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+              {/* הקווים הלינאריים - שינינו ל-type="linear" כדי שיהיו ישרים בין נקודות */}
+              <Line type="linear" dataKey="sp500" name="S&P 500" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+              <Line type="linear" dataKey="ta125" name="תל אביב 125" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
