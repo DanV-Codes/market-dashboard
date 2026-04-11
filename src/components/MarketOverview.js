@@ -1,19 +1,42 @@
-import React from 'react';
-// ייבוא רכיבי הגרף של Recharts למסך השוק
+import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
-// 1. נתוני "סימולציה" לגרף המגמה היומי של המדדים
-const dailyMarketTrend = [
+// --- חבילות הנתונים השונות שלנו (Market Data Simulation) ---
+
+const data1D = [
   { time: '10:00', sp500: 5150, ta125: 2010 },
   { time: '11:00', sp500: 5165, ta125: 2015 },
   { time: '12:00', sp500: 5140, ta125: 2020 },
   { time: '13:00', sp500: 5120, ta125: 2018 },
   { time: '14:00', sp500: 5090, ta125: 2025 },
   { time: '15:00', sp500: 5110, ta125: 2030 },
-  { time: '16:00', sp500: 5085, ta125: 2028 }, // S&P בירידה, ת"א בעלייה מתונה
+  { time: '16:00', sp500: 5085, ta125: 2028 },
 ];
 
-// 2. כרטיסיות המידע למדדים המרכזיים
+const data1W = [
+  { time: 'יום א׳', sp500: 5020, ta125: 1980 },
+  { time: 'יום ב׳', sp500: 5050, ta125: 1995 },
+  { time: 'יום ג׳', sp500: 5090, ta125: 2010 },
+  { time: 'יום ד׳', sp500: 5120, ta125: 2005 },
+  { time: 'יום ה׳', sp500: 5085, ta125: 2028 },
+];
+
+const data1M = [
+  { time: 'שבוע 1', sp500: 4800, ta125: 1900 },
+  { time: 'שבוע 2', sp500: 4950, ta125: 1950 },
+  { time: 'שבוע 3', sp500: 4900, ta125: 1980 },
+  { time: 'שבוע 4', sp500: 5085, ta125: 2028 },
+];
+
+const data1Y = [
+  { time: 'ינו׳', sp500: 4100, ta125: 1700 },
+  { time: 'אפר׳', sp500: 4400, ta125: 1850 },
+  { time: 'יול׳', sp500: 4600, ta125: 1800 },
+  { time: 'אוק׳', sp500: 4300, ta125: 1750 },
+  { time: 'היום', sp500: 5085, ta125: 2028 },
+];
+
+// כרטיסיות המידע למדדים המרכזיים
 const marketIndices = [
   { name: "S&P 500", value: "5,085.20", change: "-1.14%", isPositive: false },
   { name: "תל אביב 125", value: "2,028.40", change: "+0.28%", isPositive: true },
@@ -21,6 +44,27 @@ const marketIndices = [
 ];
 
 const MarketOverview = () => {
+  // הזיכרון של הרכיב: איזה טווח זמן נבחר כרגע? (ברירת מחדל: 1D)
+  const [timeRange, setTimeRange] = useState('1D');
+
+  // פונקציה חכמה שמחליטה אילו נתונים להחזיר לגרף לפי טווח הזמן שנבחר
+  const getChartData = () => {
+    switch (timeRange) {
+      case '1W': return data1W;
+      case '1M': return data1M;
+      case '1Y': return data1Y;
+      default: return data1D; // ה-1D שלנו
+    }
+  };
+
+  // רשימת הכפתורים שנייצר
+  const timeButtons = [
+    { id: '1D', label: 'יום' },
+    { id: '1W', label: 'שבוע' },
+    { id: '1M', label: 'חודש' },
+    { id: '1Y', label: 'שנה' }
+  ];
+
   return (
     <div className="space-y-6">
       
@@ -41,25 +85,43 @@ const MarketOverview = () => {
 
       {/* אזור הגרף המרכזי */}
       <div className="p-6 bg-slate-900 rounded-lg shadow-lg border border-slate-800">
-        <h2 className="text-xl font-bold mb-6 text-blue-400">מגמת מסחר יומית - השוואת מדדים</h2>
+        
+        {/* כותרת וכפתורי זמן בראש הגרף */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <h2 className="text-xl font-bold text-blue-400">מגמת מסחר - השוואת מדדים</h2>
+          
+          {/* כפתורי הזמן (Toggle Buttons) */}
+          <div className="flex bg-slate-800 rounded-lg p-1">
+            {timeButtons.map((btn) => (
+              <button
+                key={btn.id}
+                onClick={() => setTimeRange(btn.id)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  timeRange === btn.id 
+                    ? 'bg-blue-600 text-white shadow-sm' // עיצוב לכפתור פעיל
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700' // עיצוב לכפתור כבוי
+                }`}
+              >
+                {btn.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ציור הגרף עצמו (מקבל את הנתונים מהפונקציה) */}
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailyMarketTrend} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              {/* רשת רקע עדינה */}
+            <LineChart data={getChartData()} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-              {/* ציר זמן תחתון */}
               <XAxis dataKey="time" stroke="#64748b" tick={{ fill: '#64748b' }} />
-              {/* ציר מספרים שמאלי (מוסתר חלקית כדי לשמור על מראה נקי) */}
               <YAxis domain={['auto', 'auto']} stroke="#64748b" tick={{ fill: '#64748b' }} hide />
-              {/* חלונית פרטים במעבר עכבר */}
               <Tooltip 
                 contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px', color: '#fff' }}
                 itemStyle={{ fontWeight: 'bold' }}
               />
               <Legend verticalAlign="top" height={36} iconType="circle" />
-              {/* הקווים עצמם */}
-              <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="#3b82f6" strokeWidth={3} dot={false} />
-              <Line type="monotone" dataKey="ta125" name="תל אביב 125" stroke="#10b981" strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="ta125" name="תל אביב 125" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
