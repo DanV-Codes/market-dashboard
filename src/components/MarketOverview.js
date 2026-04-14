@@ -26,7 +26,7 @@ const MarketOverview = () => {
       }
     }));
     setMarketIndices(updated);
-  }, []);
+  }, [marketIndices]);
 
   const fetchGraphData = useCallback(async () => {
     setLoading(true);
@@ -45,7 +45,7 @@ const MarketOverview = () => {
       setChartData([]);
     }
     setLoading(false);
-  }, [activeLine, timeRange]);
+  }, [activeLine, timeRange, useCallback]);
 
   useEffect(() => {
     fetchLivePrices();
