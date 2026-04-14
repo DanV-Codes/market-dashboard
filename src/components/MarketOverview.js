@@ -45,7 +45,7 @@ const MarketOverview = () => {
       setChartData([]);
     }
     setLoading(false);
-  }, [activeLine, timeRange, useCallback]);
+  }, [activeLine, timeRange, marketIndices]);
 
   useEffect(() => {
     fetchLivePrices();
