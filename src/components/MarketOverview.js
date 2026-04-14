@@ -18,7 +18,7 @@ const MarketOverview = () => {
   const fetchLivePrices = useCallback(async () => {
     const updated = await Promise.all(marketIndices.map(async (index) => {
       try {
-        const res = await fetch(`http://localhost:8000/api/stock/${index.ticker}`);
+        const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${index.ticker}`);
         const data = await res.json();
         return { ...index, value: data.price || "לא נמצא", date: data.date || "לא ידוע" };
       } catch {
@@ -32,7 +32,7 @@ const MarketOverview = () => {
     setLoading(true);
     try {
       const ticker = marketIndices.find(idx => idx.id === activeLine).ticker;
-      const res = await fetch(`http://localhost:8000/api/stock/${ticker}/history?period=${timeRange.toLowerCase()}`);
+      const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${ticker}/history?period=${timeRange.toLowerCase()}`);
       const data = await res.json();
       
       if (Array.isArray(data)) {

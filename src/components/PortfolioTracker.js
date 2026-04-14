@@ -38,7 +38,7 @@ const PortfolioTracker = () => {
         
         // יצירת בקשות במקביל לכל המניות (Parallel Fetching)
         const fetchPromises = symbols.map(async (symbol) => {
-          const response = await fetch(`http://localhost:8000/api/stock/${symbol}`);
+          const response = await fetch(`https://market-backend-api.onrender.com/api/stock/${symbol}`);
           if (!response.ok) throw new Error(`Failed to fetch ${symbol}`);
           const data = await response.json();
           // השרת מחזיר JSON עם שדה price (או current_price בהתאם למימוש שלך)
