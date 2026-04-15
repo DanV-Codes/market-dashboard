@@ -1,66 +1,84 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const tradingDaysMap = { '1D': 1, '5D': 5, '1M': 22, '1Y': 252, 'MAX': 'כל ההיסטוריה' };
+
+// 1. הוצאנו את המבנה ההתחלתי החוצה כדי שלא ייצור לולאות אינסופיות של רינדורים
+const initialMarketIndices = [
+  { id: 'sp500', name: "S&P 500", ticker: "^GSPC", value: "טוען...", date: "מחפש נתונים...", currency: "USD", color: "#3b82f6" },
+  { id: 'ta35', name: "תל אביב 35", ticker: "TA35.TA", value: "טוען...", date: "מחפש נתונים...", currency: "ILS", color: "#10b981" },
+  { id: 'snps', name: "Synopsys (SNPS)", ticker: "SNPS", value: "טוען...", date: "מחפש נתונים...", currency: "USD", color: "#a855f7" }
+];
 
 const MarketOverview = () => {
   const [timeRange, setTimeRange] = useState('1D');
   const [activeLine, setActiveLine] = useState('sp500'); 
   const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  const [marketIndices, setMarketIndices] = useState([
-    { id: 'sp500', name: "S&P 500", ticker: "^GSPC", value: "טוען...", date: "מחפש נתונים...", currency: "USD", color: "#3b82f6" },
-    { id: 'ta35', name: "תל אביב 35", ticker: "TA35.TA", value: "טוען...", date: "מחפש נתונים...", currency: "ILS", color: "#10b981" },
-    { id: 'snps', name: "Synopsys (SNPS)", ticker: "SNPS", value: "טוען...", date: "מחפש נתונים...", currency: "USD", color: "#a855f7" }
-  ]);
+  const [marketIndices, setMarketIndices] = useState(initialMarketIndices);
 
-  const fetchLivePrices = useCallback(async () => {
-    const updated = await Promise.all(marketIndices.map(async (index) => {
+  // 2. עדכון מחירים חיים: רץ פעם אחת בטעינה, ואז כל 60 שניות בדיוק
+  useEffect(() => {
+    const fetchLivePrices = async () => {
+      const updated = await Promise.all(initialMarketIndices.map(async (index) => {
+        try {
+          const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${index.ticker}`);
+          const data = await res.json();
+          return { ...index, value: data.price || "לא נמצא", date: data.date || "לא ידוע" };
+        } catch {
+          return { ...index, value: "שגיאה", date: "שגיאת תקשורת" };
+        }
+      }));
+      setMarketIndices(updated);
+    };
+
+    // קריאה ראשונית מיד
+    fetchLivePrices();
+
+    // הפעלת טיימר למשיכת נתונים כל 60,000 מילישניות (60 שניות)
+    // אפשר לשנות ל- 30000 בשביל 30 שניות
+    const intervalId = setInterval(fetchLivePrices, 60000);
+
+    // פונקציית ניקוי - תעצור את הטיימר כשהמשתמש יוצא מהמסך כדי לחסוך סוללה
+    return () => clearInterval(intervalId);
+  }, []); // מערך ריק = מופעל פעם אחת בלבד בעליית הקומפוננטה
+
+  // 3. עדכון נתוני הגרף: נמשך כשמשנים מניה/זמן, ומתעדכן גם הוא כל 60 שניות
+  useEffect(() => {
+    const fetchGraphData = async () => {
+      setLoading(true);
       try {
-        const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${index.ticker}`);
+        const ticker = initialMarketIndices.find(idx => idx.id === activeLine).ticker;
+        const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${ticker}/history?period=${timeRange.toLowerCase()}`);
         const data = await res.json();
-        return { ...index, value: data.price || "לא נמצא", date: data.date || "לא ידוע" };
-      } catch {
-        return { ...index, value: "שגיאה", date: "שגיאת תקשורת" };
-      }
-    }));
-    setMarketIndices(updated);
-  }, [marketIndices]);
-
-  const fetchGraphData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const ticker = marketIndices.find(idx => idx.id === activeLine).ticker;
-      const res = await fetch(`https://market-backend-api.onrender.com/api/stock/${ticker}/history?period=${timeRange.toLowerCase()}`);
-      const data = await res.json();
-      
-      if (Array.isArray(data)) {
-        setChartData(data);
-      } else {
+        
+        if (Array.isArray(data)) {
+          setChartData(data);
+        } else {
+          setChartData([]);
+        }
+      } catch (e) {
+        console.error("Graph fetch error:", e);
         setChartData([]);
       }
-    } catch (e) {
-      console.error("Graph fetch error:", e);
-      setChartData([]);
-    }
-    setLoading(false);
-  }, [activeLine, timeRange, marketIndices]);
+      setLoading(false);
+    };
 
-  useEffect(() => {
-    fetchLivePrices();
-  }, [fetchLivePrices]);
-
-  useEffect(() => {
+    // קריאה ראשונית בכל שינוי טאב
     fetchGraphData();
-  }, [fetchGraphData]);
+
+    // נרענן את הגרף כל 60 שניות כדי שיראה תנועה בזמן אמת (שימושי במיוחד בתצוגת 1D)
+    const intervalId = setInterval(fetchGraphData, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [activeLine, timeRange]);
 
   const formatCurrency = (val, currencyCode) => {
     if (isNaN(val)) return val;
     return Number(val).toLocaleString('he-IL', { style: 'currency', currency: currencyCode });
   };
 
-  const activeIndexData = marketIndices.find(idx => idx.id === activeLine);
+  const activeIndexData = marketIndices.find(idx => idx.id === activeLine) || initialMarketIndices[0];
 
   return (
     <div className="space-y-6">
@@ -104,17 +122,15 @@ const MarketOverview = () => {
 
         {/* הוספנו dir="ltr" כדי למנוע מבעיות כיווניות של עברית לשבור את הגרף */}
         <div className="h-80 w-full relative" dir="ltr">
-          {loading && (
+          {loading && chartData.length === 0 && (
             <div className="absolute inset-0 z-10 bg-slate-900/50 flex items-center justify-center text-white">
               טוען נתונים מהבורסה...
             </div>
           )}
           <ResponsiveContainer width="100%" height="100%">
-            {/* סידרנו את השוליים: פחות משמאל, יותר מימין (איפה שהציר נמצא עכשיו) */}
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
               <XAxis dataKey="time" stroke="#64748b" minTickGap={30} tick={{ fontSize: 12 }} />
-              {/* שחמט: orientation="right" מעביר את הציר לימין! */}
               <YAxis 
                 orientation="right"
                 domain={['auto', 'auto']} 
